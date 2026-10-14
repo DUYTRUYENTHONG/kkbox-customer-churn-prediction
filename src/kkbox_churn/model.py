@@ -48,4 +48,3 @@ def train_baseline(features: pd.DataFrame, model_path: Path) -> dict[str, float 
         "holdout_log_loss": round(float(log_loss(y_test, probabilities)), 6),
         "holdout_auc_roc": round(float(roc_auc_score(y_test, probabilities)), 6),
     }
-

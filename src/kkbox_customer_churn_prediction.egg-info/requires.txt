@@ -1,6 +1,0 @@
-pandas<3,>=2.2
-scikit-learn<2,>=1.5
-joblib<2,>=1.4
-
-[test]
-pytest<9,>=8

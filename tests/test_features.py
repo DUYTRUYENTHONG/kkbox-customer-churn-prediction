@@ -32,4 +32,3 @@ def test_features_exclude_events_after_snapshot(tmp_path):
     assert result["last_transaction_days"] == 1
     assert result["log_days"] == 1
     assert result["total_listening_seconds"] == 50
-
