@@ -1,0 +1,15 @@
+LICENSE
+NOTICE.md
+README.md
+pyproject.toml
+src/kkbox_churn/__init__.py
+src/kkbox_churn/cli.py
+src/kkbox_churn/features.py
+src/kkbox_churn/model.py
+src/kkbox_customer_churn_prediction.egg-info/PKG-INFO
+src/kkbox_customer_churn_prediction.egg-info/SOURCES.txt
+src/kkbox_customer_churn_prediction.egg-info/dependency_links.txt
+src/kkbox_customer_churn_prediction.egg-info/entry_points.txt
+src/kkbox_customer_churn_prediction.egg-info/requires.txt
+src/kkbox_customer_churn_prediction.egg-info/top_level.txt
+tests/test_features.py

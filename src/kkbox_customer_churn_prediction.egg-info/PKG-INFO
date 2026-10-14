@@ -1,0 +1,13 @@
+Metadata-Version: 2.4
+Name: kkbox-customer-churn-prediction
+Version: 0.1.0
+Summary: As-of-date churn baseline for the KKBox competition dataset
+Requires-Python: >=3.11
+License-File: LICENSE
+License-File: NOTICE.md
+Requires-Dist: pandas<3,>=2.2
+Requires-Dist: scikit-learn<2,>=1.5
+Requires-Dist: joblib<2,>=1.4
+Provides-Extra: test
+Requires-Dist: pytest<9,>=8; extra == "test"
+Dynamic: license-file

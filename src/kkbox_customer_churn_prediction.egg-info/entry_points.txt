@@ -1,0 +1,2 @@
+[console_scripts]
+kkbox-churn = kkbox_churn.cli:main
