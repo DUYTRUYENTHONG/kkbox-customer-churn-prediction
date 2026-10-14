@@ -1,6 +1,7 @@
 # KKBox customer churn prediction baseline
 
-An independent, local machine-learning baseline by **Ali Nguyen** for the
+An independent, local machine-learning baseline prepared for **Ali Nguyen** with
+Codex assistance for the
 [KKBox churn challenge](https://www.kaggle.com/competitions/kkbox-churn-prediction-challenge).
 It builds customer features from member, transaction, and listening-log CSVs using
 only events on or before a chosen snapshot date, then evaluates a logistic-regression

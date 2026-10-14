@@ -1,6 +1,6 @@
 # Source and attribution
 
-This independent baseline was developed by Ali Nguyen after reviewing
+This independent baseline was prepared for Ali Nguyen with Codex assistance after reviewing
 [veera491/customer-churn-prediction-kkbox](https://github.com/veera491/customer-churn-prediction-kkbox),
 an MIT-licensed academic portfolio repository by Veerababu Sutapalli.
 That repository's report credits Lahari Gaddam and Sree Lakshmi Hiranmayee Kadali.
