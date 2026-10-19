@@ -2,13 +2,13 @@
 
 An independent Python baseline for the [WSDM KKBox churn challenge](https://www.kaggle.com/competitions/kkbox-churn-prediction-challenge). It turns pre-snapshot transactions and listening history into customer features, trains logistic regression, and reports holdout probability and ranking metrics. The repository is prepared for Ali Nguyen with Codex assistance.
 
-**Project status:** working source and synthetic-fixture tests. An evaluation on the official KKBox files has **not yet been run** in this repository. There is no competition submission, verified KKBox score, production model, or measured retention impact. See [data and evaluation design](docs/DATA_AND_EVALUATION.md) and [results status](docs/RESULTS.md).
+**Project status:** a local run on the official KKBox files is complete. The three-source baseline reached **0.217324 holdout log loss** and **0.819295 ROC AUC** on a fixed, stratified 25% split of 970,960 labeled users. These are within-cohort results, not a Kaggle leaderboard score, out-of-time validation, production model, or measured retention impact. See the [full audit, input hashes, and limitations](docs/RESULTS.md) and [evaluation design](docs/DATA_AND_EVALUATION.md).
 
 ## Why this baseline exists
 
-A churn decision made at the end of February 2017 cannot use March 2017 events. This pipeline accepts a snapshot date and filters every transaction and listening event to `event_date <= snapshot`. A synthetic test adds events after that date and verifies they cannot enter the features. The local model then uses a fixed, stratified 25% holdout from the `train_v2.csv` label cohort. That split measures discrimination within the cohort; it is **not** an out-of-time or causal evaluation. The exact label horizon still needs review against the official label-generation rules before interpreting a real run.
+A churn decision made at the end of February 2017 cannot use March 2017 events. This pipeline accepts a snapshot date and filters every transaction and listening event to `event_date <= snapshot`. A synthetic test adds events after that date and verifies they cannot enter the features. The local model then uses a fixed, stratified 25% holdout from the `train_v2.csv` March-label cohort. That split measures discrimination within the cohort; it is **not** an out-of-time or causal evaluation. The competition's supplied labels are used as given; this project does not reimplement their label generator.
 
-The first draft paired `train_v2.csv` with `transactions_v2.csv` and `user_logs_v2.csv` at a `2017-02-28` cutoff. Those `_v2` event files are March updates, making that pairing unsuitable for pre-cutoff behavior. This version uses the earlier `transactions.csv` and `user_logs.csv` files and rejects an input whose labeled users have no matching pre-snapshot transactions or logs. The [Kaggle discussion on file versions](https://www.kaggle.com/competitions/kkbox-churn-prediction-challenge/discussion/44363) is useful context; the exact input dates must still be checked during a real run.
+The first draft paired `train_v2.csv` with `transactions_v2.csv` and `user_logs_v2.csv` at a `2017-02-28` cutoff. Those `_v2` event files are March updates, making that pairing unsuitable for pre-cutoff behavior. The verified run uses the earlier `transactions.csv` and `user_logs.csv` files. Its audit found 15,123,586 matching pre-snapshot transaction rows, 236,970,464 matching pre-snapshot listening rows, and zero matching rows after the cutoff. See the [official file descriptions](https://www.kaggle.com/competitions/kkbox-churn-prediction-challenge/data) and [Kaggle discussion on file versions](https://www.kaggle.com/competitions/kkbox-churn-prediction-challenge/discussion/44363).
 
 ## Obtain the data
 
@@ -24,7 +24,7 @@ Download the official files from [Kaggle's competition page](https://www.kaggle.
 
 ## Reproduce
 
-Requires Python 3.11+ and enough disk space for the extracted competition files. The event CSVs are streamed, but customer aggregates for labeled users are held in memory. Full-data runtime and memory usage remain unmeasured.
+Requires Python 3.11+ and enough disk space for the extracted competition files. The DuckDB engine scans the large CSVs in parallel and keeps its local working database under the ignored output directory. A Python streaming engine remains available as `--engine python`; it is slower on the full dataset. The verified DuckDB run took 326.43 seconds on a 15.5 GiB RAM Windows machine.
 
 ```sh
 python -m venv .venv
@@ -34,10 +34,10 @@ python -m pytest
 kkbox-churn --labels data/raw/train_v2.csv \
   --transactions data/raw/transactions.csv \
   --logs data/raw/user_logs.csv \
-  --snapshot 2017-02-28 --output outputs --audit-only
+  --snapshot 2017-02-28 --engine duckdb --output outputs/full-data
 ```
 
-Review `outputs/audit.json` first. It reports aggregate cutoff coverage even when a supplied event file has no usable pre-snapshot rows, and does not train a model. Then rerun the same command **without `--audit-only`** to train. On PowerShell, use `.venv\Scripts\python.exe -m pip install -e ".[test]"`, `.venv\Scripts\python.exe -m pytest`, and `.venv\Scripts\kkbox-churn.exe` for the final command. Outputs are ignored by Git: `outputs/audit.json`, `outputs/metrics.json`, and `outputs/baseline.joblib`. The audit still reads the full CSVs and keeps aggregates for labeled users in memory. A real-data result should be published only after recording the run date, source file versions, row counts, machine and software versions, code commit, exact split, metrics, and limitations in [docs/RESULTS.md](docs/RESULTS.md). Do not publish customer-level predictions.
+The command audits source coverage and the date cutoff before fitting, then writes aggregate `outputs/full-data/metrics.json`, a local `baseline.joblib`, and a local DuckDB feature cache. All are ignored by Git. To inspect counts without fitting, add `--audit-only`; that separate run scans the CSVs again. For a smaller transaction-only baseline, replace `--logs ...` with `--transactions-only` and choose a different output directory. On PowerShell, use `.venv\Scripts\python.exe -m pip install -e ".[test]"`, `.venv\Scripts\python.exe -m pytest`, and `.venv\Scripts\kkbox-churn.exe` for the final command. Do not publish customer-level predictions or trained artifacts.
 
 ## Metrics and interpretation
 
