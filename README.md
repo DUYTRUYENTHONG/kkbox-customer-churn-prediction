@@ -8,7 +8,7 @@ An independent Python baseline for the [WSDM KKBox churn challenge](https://www.
 
 A churn decision made at the end of February 2017 cannot use March 2017 events. This pipeline accepts a snapshot date and filters every transaction and listening event to `event_date <= snapshot`. A synthetic test adds events after that date and verifies they cannot enter the features. The local model then uses a fixed, stratified 25% holdout from the March label cohort. That split measures discrimination within the cohort; it is **not** an out-of-time or causal evaluation.
 
-The first draft paired `train_v2.csv` with `transactions_v2.csv` and `user_logs_v2.csv` at a `2017-02-28` cutoff. The `_v2` event files contain March activity, so that pairing silently produced zero pre-cutoff behavior. This version uses the earlier `transactions.csv` and `user_logs.csv` files and rejects an input whose labeled users have no matching pre-snapshot transactions or logs. The [Kaggle discussion on file versions](https://www.kaggle.com/competitions/kkbox-churn-prediction-challenge/discussion/44363) is useful context; the exact input dates must still be checked during a real run.
+The first draft paired `train_v2.csv` with `transactions_v2.csv` and `user_logs_v2.csv` at a `2017-02-28` cutoff. Those `_v2` event files are March updates, making that pairing unsuitable for pre-cutoff behavior. This version uses the earlier `transactions.csv` and `user_logs.csv` files and rejects an input whose labeled users have no matching pre-snapshot transactions or logs. The [Kaggle discussion on file versions](https://www.kaggle.com/competitions/kkbox-churn-prediction-challenge/discussion/44363) is useful context; the exact input dates must still be checked during a real run.
 
 ## Obtain the data
 
@@ -41,7 +41,7 @@ On PowerShell, use `.venv\Scripts\python.exe -m pip install -e ".[test]"`, `.ven
 
 ## Metrics and interpretation
 
-The CLI reports holdout log loss (the challenge's probability metric), ROC AUC, average precision, Brier score, churn prevalence, and the observed churn rate among the highest-scored 10% of held-out users. It also reports the log loss of a training-prevalence-only comparator. Thresholds and outreach actions are not tuned in this baseline. Better ranking on a holdout would not demonstrate that contacting a user prevents churn.
+The CLI reports holdout log loss (the challenge's probability metric), ROC AUC, average precision, Brier score, churn prevalence, and the observed churn rate among the highest-scored 10% of held-out users. It also reports pre-snapshot event counts, users without event history, and the log loss of a training-prevalence-only comparator. Thresholds and outreach actions are not tuned in this baseline. Better ranking on a holdout would not demonstrate that contacting a user prevents churn.
 
 ## Source and credit
 

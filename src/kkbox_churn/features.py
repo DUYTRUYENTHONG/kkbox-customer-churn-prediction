@@ -95,7 +95,7 @@ def build_features(
         raise ValueError(
             "No pre-snapshot transactions or listening logs matched the labeled users. "
             "For a 2017-02-28 cutoff, use transactions.csv and user_logs.csv; "
-            "the _v2 event files contain March data."
+            "the _v2 event files are March updates."
         )
 
     return pd.DataFrame(users.values()).sort_values("msno").reset_index(drop=True)

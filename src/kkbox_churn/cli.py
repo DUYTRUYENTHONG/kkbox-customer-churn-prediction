@@ -27,6 +27,10 @@ def main() -> None:
         "label_file": args.labels.name,
         "transaction_file": args.transactions.name,
         "log_file": args.logs.name,
+        "pre_snapshot_transaction_rows": int(data["transaction_count"].sum()),
+        "pre_snapshot_log_rows": int(data["log_days"].sum()),
+        "users_without_transactions": int((data["transaction_count"] == 0).sum()),
+        "users_without_logs": int((data["log_days"] == 0).sum()),
     })
     args.output.mkdir(parents=True, exist_ok=True)
     (args.output / "metrics.json").write_text(json.dumps(metrics, indent=2) + "\n", encoding="utf-8")
