@@ -115,6 +115,21 @@ def test_rejects_missing_source_columns_before_training(tmp_path):
         build_features(labels, transactions, tmp_path / "unused-logs.csv", datetime(2017, 2, 28))
 
 
+def test_duckdb_latest_transaction_tie_uses_stable_plan_order(tmp_path):
+    labels = tmp_path / "labels.csv"
+    transactions = tmp_path / "transactions.csv"
+    write_csv(labels, [{"msno": "a", "is_churn": "1"}])
+    write_csv(transactions, [
+        {"msno": "a", "transaction_date": "20170227", "actual_amount_paid": "100", "payment_plan_days": "90", "is_auto_renew": "0"},
+        {"msno": "a", "transaction_date": "20170227", "actual_amount_paid": "50", "payment_plan_days": "30", "is_auto_renew": "1"},
+    ])
+    features, _ = build_features_with_audit_duckdb(
+        labels, transactions, None, datetime(2017, 2, 28), tmp_path / "duckdb"
+    )
+    assert features.loc[0, "last_plan_days"] == 90
+    assert features.loc[0, "last_auto_renew"] == 0
+
+
 def test_rejects_csv_row_with_missing_fields(tmp_path):
     labels = tmp_path / "train_v2.csv"
     labels.write_text("msno,is_churn\na\n", encoding="utf-8")

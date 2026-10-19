@@ -55,17 +55,24 @@ def build_features_with_audit_duckdb(
                       count(*) FILTER (WHERE user_id IS NOT NULL AND event_date <= CAST(? AS DATE)) AS usable_rows,
                       sum(TRY_CAST(coalesce(nullif(actual_amount_paid, ''), '0') AS DOUBLE))
                           FILTER (WHERE user_id IS NOT NULL AND event_date <= CAST(? AS DATE)) AS total_paid,
-                      arg_max(TRY_CAST(coalesce(nullif(payment_plan_days, ''), '0') AS INTEGER), event_date)
-                          FILTER (WHERE user_id IS NOT NULL AND event_date <= CAST(? AS DATE)) AS last_plan_days,
-                      arg_max(TRY_CAST(coalesce(nullif(is_auto_renew, ''), '0') AS INTEGER), event_date)
-                          FILTER (WHERE user_id IS NOT NULL AND event_date <= CAST(? AS DATE)) AS last_auto_renew,
+                      arg_max(
+                          struct_pack(
+                              plan := TRY_CAST(coalesce(nullif(payment_plan_days, ''), '0') AS INTEGER),
+                              renew := TRY_CAST(coalesce(nullif(is_auto_renew, ''), '0') AS INTEGER)
+                          ),
+                          struct_pack(
+                              event := event_date,
+                              plan := TRY_CAST(coalesce(nullif(payment_plan_days, ''), '0') AS INTEGER),
+                              renew := TRY_CAST(coalesce(nullif(is_auto_renew, ''), '0') AS INTEGER)
+                          )
+                      ) FILTER (WHERE user_id IS NOT NULL AND event_date <= CAST(? AS DATE)) AS latest_plan,
                       max(event_date) FILTER (WHERE user_id IS NOT NULL AND event_date <= CAST(? AS DATE)) AS latest_date,
                       count(*) FILTER (WHERE user_id IS NOT NULL AND event_date <= CAST(? AS DATE)
                           AND (TRY_CAST(coalesce(nullif(actual_amount_paid, ''), '0') AS DOUBLE) IS NULL
                             OR TRY_CAST(coalesce(nullif(payment_plan_days, ''), '0') AS INTEGER) IS NULL
                             OR TRY_CAST(coalesce(nullif(is_auto_renew, ''), '0') AS INTEGER) IS NULL)) AS invalid_values
                FROM parsed GROUP BY user_id""",
-            [str(transactions_path), *([cutoff] * 7)],
+            [str(transactions_path), *([cutoff] * 6)],
         )
         tx_counts = db.execute(
             """SELECT sum(raw_rows), sum(matched_rows), sum(future_rows), sum(invalid_dates),
@@ -127,8 +134,8 @@ def build_features_with_audit_duckdb(
                        coalesce(t.usable_rows, 0) AS transaction_count,
                        coalesce(t.total_paid, 0) AS total_paid,
                        coalesce(date_diff('day', t.latest_date, CAST(? AS DATE)), -1) AS last_transaction_days,
-                       coalesce(t.last_plan_days, 0) AS last_plan_days,
-                       coalesce(t.last_auto_renew, 0) AS last_auto_renew,
+                       coalesce(t.latest_plan.plan, 0) AS last_plan_days,
+                       coalesce(t.latest_plan.renew, 0) AS last_auto_renew,
                        {log_select}
                 FROM labels AS l LEFT JOIN tx_agg AS t ON l.msno = t.user_id
                 {log_join} ORDER BY l.msno""",
