@@ -1,51 +1,48 @@
-# KKBox customer churn prediction baseline
+# KKBox customer churn: snapshot-safe baseline
 
-An independent, local machine-learning baseline prepared for **Ali Nguyen** with
-Codex assistance for the
-[KKBox churn challenge](https://www.kaggle.com/competitions/kkbox-churn-prediction-challenge).
-It builds customer features from member, transaction, and listening-log CSVs using
-only events on or before a chosen snapshot date, then evaluates a logistic-regression
-model on a stratified holdout. The challenge uses log loss as its evaluation metric.
+An independent Python baseline for the [WSDM KKBox churn challenge](https://www.kaggle.com/competitions/kkbox-churn-prediction-challenge). It turns pre-snapshot transactions and listening history into customer features, trains logistic regression, and reports holdout probability and ranking metrics. The repository is prepared for Ali Nguyen with Codex assistance.
 
-**Status:** working baseline code, not a production system or a verified competition
-result. No real KKBox data or model artifacts are included. The CV's LightGBM,
-Gemini, AUC, recall, and revenue-at-risk claims are not results of this repository.
+**Project status:** working source and synthetic-fixture tests. An evaluation on the official KKBox files has **not yet been run** in this repository. There is no competition submission, verified KKBox score, production model, or measured retention impact. See [data and evaluation design](docs/DATA_AND_EVALUATION.md) and [results status](docs/RESULTS.md).
 
-## Run locally
+## Why this baseline exists
 
-Use Python 3.11 or newer. Download the dataset directly from Kaggle after accepting
-its terms; do not commit or redistribute the competition data.
+A churn decision made at the end of February 2017 cannot use March 2017 events. This pipeline accepts a snapshot date and filters every transaction and listening event to `event_date <= snapshot`. A synthetic test adds events after that date and verifies they cannot enter the features. The local model then uses a fixed, stratified 25% holdout from the March label cohort. That split measures discrimination within the cohort; it is **not** an out-of-time or causal evaluation.
+
+The first draft paired `train_v2.csv` with `transactions_v2.csv` and `user_logs_v2.csv` at a `2017-02-28` cutoff. The `_v2` event files contain March activity, so that pairing silently produced zero pre-cutoff behavior. This version uses the earlier `transactions.csv` and `user_logs.csv` files and rejects an input whose labeled users have no matching pre-snapshot transactions or logs. The [Kaggle discussion on file versions](https://www.kaggle.com/competitions/kkbox-churn-prediction-challenge/discussion/44363) is useful context; the exact input dates must still be checked during a real run.
+
+## Obtain the data
+
+Download the official files from [Kaggle's competition page](https://www.kaggle.com/competitions/kkbox-churn-prediction-challenge/data) after accepting its rules. The [competition rules](https://www.kaggle.com/c/kkbox-churn-prediction-challenge/rules) restrict redistribution. Keep extracted CSVs outside Git or under ignored `data/raw/`:
+
+| File | Role |
+| --- | --- |
+| `train_v2.csv` | March churn labels: `msno`, `is_churn` |
+| `transactions.csv` | Earlier transaction history: `msno`, `transaction_date`, `actual_amount_paid`, `payment_plan_days`, `is_auto_renew` |
+| `user_logs.csv` | Earlier listening history: `msno`, `date`, `total_secs`, `num_unq` |
+
+`members_v3.csv` is intentionally omitted from this baseline: its member attributes are not versioned as of the snapshot, so their availability at the decision date is not demonstrated. Raw customer IDs, rows, trained models, and derived customer-level features must not be committed.
+
+## Reproduce
+
+Requires Python 3.11+ and enough disk space for the extracted competition files. The event CSVs are streamed, but customer aggregates for labeled users are held in memory. Full-data runtime and memory usage remain unmeasured.
 
 ```sh
 python -m venv .venv
+. .venv/bin/activate
 python -m pip install -e '.[test]'
-pytest
-kkbox-churn --labels data/raw/train_v2.csv --members data/raw/members_v3.csv \
-  --transactions data/raw/transactions_v2.csv --logs data/raw/user_logs_v2.csv \
+python -m pytest
+kkbox-churn --labels data/raw/train_v2.csv \
+  --transactions data/raw/transactions.csv \
+  --logs data/raw/user_logs.csv \
   --snapshot 2017-02-28 --output outputs
 ```
 
-On Windows PowerShell, run `.venv\Scripts\python.exe -m pip install -e '.[test]'`
-and `.venv\Scripts\kkbox-churn.exe` instead of the shell commands above.
-The command writes `outputs/metrics.json` and `outputs/baseline.joblib` locally.
+On PowerShell, use `.venv\Scripts\python.exe -m pip install -e ".[test]"`, `.venv\Scripts\python.exe -m pytest`, and `.venv\Scripts\kkbox-churn.exe` for the final command. Outputs are ignored by Git: `outputs/metrics.json` and `outputs/baseline.joblib`. A real-data result should be published only after recording the run date, source file versions, row counts, machine and software versions, code commit, exact split, metrics, and limitations in [docs/RESULTS.md](docs/RESULTS.md). Do not publish customer-level predictions.
 
-## Data contract and limitations
+## Metrics and interpretation
 
-- `labels`: `msno`, `is_churn`; each user should appear once.
-- `members`: `msno`, `city`, `registered_via`.
-- `transactions`: `msno`, `transaction_date`, `actual_amount_paid`,
-  `payment_plan_days`, `is_auto_renew`.
-- `logs`: `msno`, `date`, `total_secs`, `num_unq`.
-- Date columns use `YYYYMMDD`. The caller must choose a snapshot that precedes
-  the outcomes represented by the labels. Rows after the snapshot are excluded.
-- This baseline streams the two event CSVs but holds customer aggregates in memory.
-  Real-dataset runtime and scores have not yet been measured.
-- The random holdout is a local baseline, not a competition submission or a
-  temporal production validation. It does not establish business impact.
+The CLI reports holdout log loss (the challenge's probability metric), ROC AUC, average precision, Brier score, churn prevalence, and the observed churn rate among the highest-scored 10% of held-out users. It also reports the log loss of a training-prevalence-only comparator. Thresholds and outreach actions are not tuned in this baseline. Better ranking on a holdout would not demonstrate that contacting a user prevents churn.
 
-## Attribution
+## Source and credit
 
-The project was informed by the MIT-licensed
-[veera491 academic repository](https://github.com/veera491/customer-churn-prediction-kkbox).
-See [NOTICE.md](NOTICE.md). Its code, notebook, thesis report, and reported results
-are not presented here as Ali Nguyen's work.
+This implementation is original code informed by the MIT-licensed [veera491/customer-churn-prediction-kkbox](https://github.com/veera491/customer-churn-prediction-kkbox) academic repository and by the competition data description. See [NOTICE.md](NOTICE.md). None of that project's code, report, notebook, or reported model results is presented as Ali Nguyen's work. The project's MIT license applies to this source code, **not** to the KKBox competition data.
