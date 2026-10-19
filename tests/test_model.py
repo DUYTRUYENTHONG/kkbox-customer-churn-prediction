@@ -18,8 +18,6 @@ def test_model_trains_and_records_holdout_metrics(tmp_path):
             "total_listening_seconds": float(index * 20),
             "total_unique_tracks": index % 9,
             "last_log_days": index % 11,
-            "city": str(index % 3),
-            "registered_via": str(index % 2),
         })
     path = tmp_path / "model.joblib"
     metrics = train_baseline(pd.DataFrame(rows), path)
@@ -28,3 +26,5 @@ def test_model_trains_and_records_holdout_metrics(tmp_path):
     assert metrics["holdout_users"] == 10
     assert 0 <= metrics["holdout_auc_roc"] <= 1
     assert metrics["holdout_log_loss"] >= 0
+    assert metrics["prevalence_log_loss"] >= 0
+    assert metrics["top_decile_users"] == 1
