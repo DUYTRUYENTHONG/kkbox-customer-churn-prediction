@@ -24,24 +24,40 @@ Download the official files from [Kaggle's competition page](https://www.kaggle.
 
 ## Reproduce
 
-Requires Python 3.11+ and enough disk space for the extracted competition files. The DuckDB engine scans the large CSVs in parallel and keeps its local working database under the ignored output directory. A Python streaming engine remains available as `--engine python`; it is slower on the full dataset. The verified DuckDB run took 326.43 seconds on a 15.5 GiB RAM Windows machine.
+From the repository root, use Python 3.11+ and place the three authorized, extracted CSVs under `data/raw/`. Their combined extracted size is more than 32 GB; leave additional free space for the ignored DuckDB cache and model. The verified Windows run took 326.43 seconds on a machine with 15.5 GiB RAM. Runtime and memory use vary by machine.
 
-```sh
+**Windows PowerShell** (the environment used for the reported run):
+
+```powershell
 python -m venv .venv
-. .venv/bin/activate
-python -m pip install -e '.[test]'
-python -m pytest
-kkbox-churn --labels data/raw/train_v2.csv \
-  --transactions data/raw/transactions.csv \
-  --logs data/raw/user_logs.csv \
-  --snapshot 2017-02-28 --engine duckdb --output outputs/full-data
+.venv\Scripts\python.exe -m pip install -e ".[test]"
+.venv\Scripts\python.exe -m pytest
+.venv\Scripts\kkbox-churn.exe --labels data\raw\train_v2.csv --transactions data\raw\transactions.csv --logs data\raw\user_logs.csv --snapshot 2017-02-28 --engine duckdb --output outputs\full-data
 ```
 
-The command audits source coverage and the date cutoff before fitting, then writes aggregate `outputs/full-data/metrics.json`, a local `baseline.joblib`, and a local DuckDB feature cache. All are ignored by Git. To inspect counts without fitting, add `--audit-only`; that separate run scans the CSVs again. For a smaller transaction-only baseline, replace `--logs ...` with `--transactions-only` and choose a different output directory. On PowerShell, use `.venv\Scripts\python.exe -m pip install -e ".[test]"`, `.venv\Scripts\python.exe -m pytest`, and `.venv\Scripts\kkbox-churn.exe` for the final command. Do not publish customer-level predictions or trained artifacts.
+**macOS/Linux:**
+
+```sh
+python3 -m venv .venv
+.venv/bin/python -m pip install -e '.[test]'
+.venv/bin/python -m pytest
+.venv/bin/kkbox-churn --labels data/raw/train_v2.csv --transactions data/raw/transactions.csv --logs data/raw/user_logs.csv --snapshot 2017-02-28 --engine duckdb --output outputs/full-data
+```
+
+The run prints and saves aggregate audit counts and holdout metrics. Read `outputs/full-data/metrics.json` and compare its counts and scores with [the verified run](docs/RESULTS.md). The CLI also saves `baseline.joblib` and `feature_cache.duckdb` locally; both can contain customer-derived information and must stay private. Use [the reproduction guide](docs/REPRODUCIBILITY.md) for input hashes, every CLI option, output fields, alternative runs, and troubleshooting.
 
 ## Metrics and interpretation
 
 The CLI reports holdout log loss (the challenge's probability metric), ROC AUC, average precision, Brier score, churn prevalence, and the observed churn rate among the highest-scored 10% of held-out users. It also reports CSV row counts, labeled-user matches, post-snapshot and invalid-date exclusions, pre-snapshot event counts, users without event history, and the log loss of a training-prevalence-only comparator. Missing required columns and malformed CSV rows stop the run. These aggregate diagnostics contain no customer IDs. Thresholds and outreach actions are not tuned in this baseline. Better ranking on a holdout would not demonstrate that contacting a user prevents churn.
+
+## Documentation map
+
+| Read this | For |
+| --- | --- |
+| [Data and evaluation protocol](docs/DATA_AND_EVALUATION.md) | Cohort, cutoff, split, and claim boundaries |
+| [Features and pipeline](docs/FEATURES_AND_PIPELINE.md) | Source fields, feature definitions, data flow, and implementation choices |
+| [Reproduction guide](docs/REPRODUCIBILITY.md) | Setup, hashes, commands, outputs, tests, and troubleshooting |
+| [Verified results](docs/RESULTS.md) | Provenance, audits, holdout scores, and limitations |
 
 ## Source and credit
 
