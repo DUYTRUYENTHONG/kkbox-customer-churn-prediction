@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -47,7 +48,7 @@ def build_features(
 def build_features_with_audit(
     labels_path: Path,
     transactions_path: Path,
-    logs_path: Path,
+    logs_path: Path | None,
     snapshot: datetime,
     *,
     require_coverage: bool = True,
@@ -93,11 +94,15 @@ def build_features_with_audit(
 
     latest_tx: dict[str, datetime] = {}
     accepted_transactions = 0
+    next_tx_progress = 10_000_000
     for row in _rows(
         transactions_path,
         {"msno", "transaction_date", "actual_amount_paid", "payment_plan_days", "is_auto_renew"},
     ):
         audit["transaction_rows_read"] += 1
+        if audit["transaction_rows_read"] >= next_tx_progress:
+            print(f"Read {next_tx_progress:,} transaction rows", file=sys.stderr, flush=True)
+            next_tx_progress += 10_000_000
         key = row["msno"]
         user = users.get(key)
         if user is None:
@@ -121,8 +126,13 @@ def build_features_with_audit(
 
     latest_log: dict[str, datetime] = {}
     accepted_logs = 0
-    for row in _rows(logs_path, {"msno", "date", "total_secs", "num_unq"}):
+    next_log_progress = 10_000_000
+    log_rows = _rows(logs_path, {"msno", "date", "total_secs", "num_unq"}) if logs_path else ()
+    for row in log_rows:
         audit["log_rows_read"] += 1
+        if audit["log_rows_read"] >= next_log_progress:
+            print(f"Read {next_log_progress:,} listening rows", file=sys.stderr, flush=True)
+            next_log_progress += 10_000_000
         key = row["msno"]
         user = users.get(key)
         if user is None:
@@ -143,9 +153,10 @@ def build_features_with_audit(
             latest_log[key] = event_date
             user["last_log_days"] = (snapshot - event_date).days
 
-    if require_coverage and (not accepted_transactions or not accepted_logs):
+    if require_coverage and (not accepted_transactions or (logs_path and not accepted_logs)):
+        sources = "transactions or listening logs" if logs_path else "transactions"
         raise ValueError(
-            "No pre-snapshot transactions or listening logs matched the labeled users. "
+            f"No pre-snapshot {sources} matched the labeled users. "
             "For a 2017-02-28 cutoff, use transactions.csv and user_logs.csv; "
             "the _v2 event files are March updates."
         )

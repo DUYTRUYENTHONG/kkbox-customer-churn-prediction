@@ -64,3 +64,45 @@ def test_cli_writes_model_metrics_and_aggregate_audit(tmp_path, monkeypatch):
     assert audit["pre_snapshot_transaction_rows"] == 40
     assert not (audit_output / "baseline.joblib").exists()
     assert not (audit_output / "metrics.json").exists()
+
+
+def test_cli_transactions_only_omits_log_features(tmp_path, monkeypatch):
+    labels = tmp_path / "train_v2.csv"
+    transactions = tmp_path / "transactions.csv"
+    output = tmp_path / "output"
+    _write_csv(labels, [
+        {"msno": f"user-{index}", "is_churn": index % 2}
+        for index in range(40)
+    ])
+    _write_csv(transactions, [
+        {
+            "msno": f"user-{index}",
+            "transaction_date": "20170227",
+            "actual_amount_paid": 50 + index,
+            "payment_plan_days": 30,
+            "is_auto_renew": index % 2,
+        }
+        for index in range(40)
+    ])
+    monkeypatch.setattr(sys, "argv", [
+        "kkbox-churn", "--labels", str(labels), "--transactions", str(transactions),
+        "--transactions-only", "--snapshot", "2017-02-28", "--output", str(output),
+    ])
+    main()
+    metrics = json.loads((output / "metrics.json").read_text(encoding="utf-8"))
+    assert metrics["feature_mode"] == "transactions_only"
+    assert metrics["log_file"] is None
+    assert metrics["pre_snapshot_log_rows"] == 0
+    assert metrics["pre_snapshot_transaction_rows"] == 40
+    assert (output / "baseline.joblib").is_file()
+
+    fast_output = tmp_path / "fast-output"
+    monkeypatch.setattr(sys, "argv", [
+        "kkbox-churn", "--labels", str(labels), "--transactions", str(transactions),
+        "--transactions-only", "--snapshot", "2017-02-28", "--engine", "duckdb",
+        "--output", str(fast_output),
+    ])
+    main()
+    fast_metrics = json.loads((fast_output / "metrics.json").read_text(encoding="utf-8"))
+    assert fast_metrics["engine"] == "duckdb"
+    assert fast_metrics["pre_snapshot_transaction_rows"] == 40

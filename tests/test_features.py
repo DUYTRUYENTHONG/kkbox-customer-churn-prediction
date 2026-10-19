@@ -2,7 +2,9 @@ import csv
 from datetime import datetime
 
 import pytest
+from pandas.testing import assert_frame_equal
 
+from kkbox_churn.duckdb_features import build_features_with_audit_duckdb
 from kkbox_churn.features import build_features, build_features_with_audit
 
 
@@ -96,6 +98,12 @@ def test_audit_accounts_for_future_invalid_and_unmatched_events(tmp_path):
         "users_without_transactions": 1,
         "users_without_logs": 1,
     }
+
+    fast_features, fast_audit = build_features_with_audit_duckdb(
+        labels, transactions, logs, datetime(2017, 2, 28), tmp_path / "duckdb"
+    )
+    assert fast_audit == audit
+    assert_frame_equal(fast_features, features, check_dtype=False)
 
 
 def test_rejects_missing_source_columns_before_training(tmp_path):
