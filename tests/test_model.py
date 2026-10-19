@@ -14,7 +14,7 @@ def test_model_trains_and_records_holdout_metrics(tmp_path):
             "last_transaction_days": index % 15,
             "last_plan_days": 30,
             "last_auto_renew": index % 2,
-            "log_days": 2 + index % 6,
+            "log_rows": 2 + index % 6,
             "total_listening_seconds": float(index * 20),
             "total_unique_tracks": index % 9,
             "last_log_days": index % 11,

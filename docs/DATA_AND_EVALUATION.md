@@ -2,7 +2,7 @@
 
 ## Decision and cohort
 
-The row grain is one `msno` in `train_v2.csv`, with `is_churn` as the label. The illustrative decision cutoff is 2017-02-28 for the subsequent March label cohort. Every event feature uses transaction or listening dates on or before that cutoff. The label is never part of model input. The code rejects duplicate or invalid labels and event files with no matching pre-cutoff behavior.
+The row grain is one `msno` in `train_v2.csv`, with `is_churn` as the label. The illustrative decision cutoff is 2017-02-28 for that labeled cohort. Its exact label horizon must be verified against the official label-generation rules before interpreting a real run. Every event feature uses transaction or listening dates on or before the cutoff. The label is never part of model input. The code rejects duplicate or invalid labels, missing required CSV columns, malformed rows, and event files with no matching pre-cutoff behavior.
 
 The data lacks an ingestion timestamp. The filter checks **event time**, not whether each event was already available to a live marketing system on the cutoff date. Membership attributes from `members_v3.csv` are excluded because the file does not establish their historical state at that cutoff.
 
@@ -13,13 +13,15 @@ The data lacks an ingestion timestamp. The filter checks **event time**, not whe
 | Transactions | count, sum of amount paid, days since latest transaction, latest plan days, latest auto-renew flag | Include only `transaction_date <= snapshot`. |
 | Listening | count of log rows, total listening seconds, total unique tracks, days since latest log | Include only `date <= snapshot`. |
 
-`log_days` currently counts valid log rows, which should be interpreted as active days only if the source has one row per user-day. Missing history is represented by zero counts and `-1` recency; future work should distinguish true inactivity from incomplete ingestion. No demographic, member status, expiration-date, cancellation, or post-cutoff field is used.
+The feature is named `log_rows` because the source's one-row-per-user-day behavior has not been verified here. Missing history is represented by zero counts and `-1` recency; future work should distinguish true inactivity from incomplete ingestion. No demographic, member status, expiration-date, cancellation, or post-cutoff field is used.
+
+Run the CLI with `--audit-only` first. It writes `audit.json` without training, even if an event file has zero usable pre-snapshot rows. The normal training command includes the same aggregate diagnostics in `metrics.json`: rows read, rows matching labeled users, invalid-date and post-snapshot exclusions, usable pre-snapshot rows, and labeled users without each event type. These counts help detect wrong file versions and missing coverage without publishing customer IDs. They do not prove that every event was available to an operational system at the cutoff.
 
 ## Model and split
 
 The estimator is a scikit-learn pipeline: median imputation, standard scaling, and logistic regression. Preprocessing is fitted on the 75% training partition only. The remaining 25% is a stratified random holdout, selected with seed 42. No hyperparameter or threshold selection is made on that holdout. A comparator predicts the training partition's churn prevalence for every held-out user.
 
-This design answers a limited question: can pre-cutoff features separate labels in a held-out part of the **same March cohort**? A production decision would need a separate out-of-time cohort, stability checks, calibration review, and an intervention study. Repeated users across time, delayed data arrival, and the competition's exact label-generation rule need explicit review before stronger claims.
+This design answers a limited question: can pre-cutoff features separate labels in a held-out part of the **same labeled cohort**? A production decision would need a separate out-of-time cohort, stability checks, calibration review, and an intervention study. Repeated users across time, delayed data arrival, and the competition's exact label-generation rule need explicit review before stronger claims.
 
 ## Result acceptance
 
@@ -29,4 +31,5 @@ Before filling [RESULTS.md](RESULTS.md), verify the official files and their dat
 
 - [KKBox competition data](https://www.kaggle.com/competitions/kkbox-churn-prediction-challenge/data) and [rules](https://www.kaggle.com/c/kkbox-churn-prediction-challenge/rules)
 - [Kaggle discussion of the file versions](https://www.kaggle.com/competitions/kkbox-churn-prediction-challenge/discussion/44363)
+- [Competition host clarification on churn labels and updated data](https://www.kaggle.com/competitions/kkbox-churn-prediction-challenge/discussion/43622)
 - [scikit-learn: data leakage and pipelines](https://scikit-learn.org/stable/common_pitfalls.html#data-leakage)

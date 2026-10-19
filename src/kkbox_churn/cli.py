@@ -7,7 +7,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 
-from .features import build_features
+from .features import build_features_with_audit
 from .model import train_baseline
 
 
@@ -18,21 +18,28 @@ def main() -> None:
     parser.add_argument("--logs", type=Path, required=True, help="user_logs.csv (pre-cutoff history)")
     parser.add_argument("--snapshot", type=lambda value: datetime.strptime(value, "%Y-%m-%d"), required=True)
     parser.add_argument("--output", type=Path, default=Path("outputs"))
+    parser.add_argument("--audit-only", action="store_true", help="Report input coverage without training")
     args = parser.parse_args()
 
-    data = build_features(args.labels, args.transactions, args.logs, args.snapshot)
-    metrics = train_baseline(data, args.output / "baseline.joblib")
-    metrics.update({
+    data, audit = build_features_with_audit(
+        args.labels, args.transactions, args.logs, args.snapshot,
+        require_coverage=not args.audit_only,
+    )
+    report = {
         "snapshot": args.snapshot.date().isoformat(),
         "label_file": args.labels.name,
         "transaction_file": args.transactions.name,
         "log_file": args.logs.name,
-        "pre_snapshot_transaction_rows": int(data["transaction_count"].sum()),
-        "pre_snapshot_log_rows": int(data["log_days"].sum()),
-        "users_without_transactions": int((data["transaction_count"] == 0).sum()),
-        "users_without_logs": int((data["log_days"] == 0).sum()),
-    })
+        **audit,
+    }
     args.output.mkdir(parents=True, exist_ok=True)
+    if args.audit_only:
+        (args.output / "audit.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+        print(json.dumps(report, indent=2))
+        return
+
+    metrics = train_baseline(data, args.output / "baseline.joblib")
+    metrics.update(report)
     (args.output / "metrics.json").write_text(json.dumps(metrics, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(metrics, indent=2))
 

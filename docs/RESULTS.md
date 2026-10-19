@@ -10,7 +10,7 @@ When an authorized, complete dataset is available, report:
 | Run date, code commit, Python and package versions | Pending |
 | Snapshot and exact cohort definition | Pending |
 | Labeled, training, and held-out user counts | Pending |
-| Pre-cutoff event counts and missingness | Pending |
+| Input row counts, labeled-user matches, invalid-date/post-cutoff exclusions, usable pre-cutoff rows, and missingness | Pending |
 | Training and holdout churn prevalence | Pending |
 | Prevalence comparator and model log loss | Pending |
 | ROC AUC, average precision, Brier score | Pending |
